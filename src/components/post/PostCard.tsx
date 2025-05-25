@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Link as LinkIcon, Twitter, Facebook } from 'lucide-react';
 import { Post } from '../../types/Post';
 import { User } from '../../types/User';
 import { Comment } from '../../types/Comment';
 import { formatDistanceToNow } from 'date-fns';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface PostCardProps {
@@ -20,6 +20,8 @@ const PostCard = ({ post, author, comments, onLike, onComment }: PostCardProps) 
   const { currentUser } = useAuth();
   const [newComment, setNewComment] = useState('');
   const [showComments, setShowComments] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(false);
   
   const isLiked = currentUser ? post.likes.includes(currentUser.id) : false;
   
@@ -34,6 +36,45 @@ const PostCard = ({ post, author, comments, onLike, onComment }: PostCardProps) 
       setNewComment('');
       setShowComments(true);
     }
+  };
+
+  const handleShare = async () => {
+    setShowShareMenu(true);
+  };
+
+  const getPostUrl = () => {
+    // In a real app, this would be a proper URL to the post
+    return `${window.location.origin}/p/${post.id}`;
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getPostUrl());
+      setShareSuccess(true);
+      setTimeout(() => setShareSuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+    setShowShareMenu(false);
+  };
+
+  const shareToTwitter = () => {
+    const text = `Check out this amazing dog photo by @${author.username}`;
+    const url = getPostUrl();
+    window.open(
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+      '_blank'
+    );
+    setShowShareMenu(false);
+  };
+
+  const shareToFacebook = () => {
+    const url = getPostUrl();
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+      '_blank'
+    );
+    setShowShareMenu(false);
   };
   
   return (
@@ -63,7 +104,7 @@ const PostCard = ({ post, author, comments, onLike, onComment }: PostCardProps) 
       </div>
       
       {/* Post actions */}
-      <div className="p-3 flex items-center justify-between">
+      <div className="p-3 flex items-center justify-between relative">
         <div className="flex items-center space-x-4">
           <motion.button 
             whileTap={{ scale: 0.8 }}
@@ -78,13 +119,64 @@ const PostCard = ({ post, author, comments, onLike, onComment }: PostCardProps) 
           >
             <MessageCircle className="h-6 w-6" />
           </button>
-          <button className="text-gray-700 focus:outline-none">
+          <button 
+            onClick={handleShare}
+            className="text-gray-700 focus:outline-none"
+          >
             <Share2 className="h-6 w-6" />
           </button>
         </div>
         <button className="text-gray-700 focus:outline-none">
           <Bookmark className="h-6 w-6" />
         </button>
+
+        {/* Share menu */}
+        <AnimatePresence>
+          {showShareMenu && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="absolute left-0 bottom-full mb-2 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden z-10"
+            >
+              <button
+                onClick={copyLink}
+                className="flex items-center space-x-2 w-full px-4 py-2 hover:bg-gray-50 text-left"
+              >
+                <LinkIcon className="h-4 w-4" />
+                <span>Copy link</span>
+              </button>
+              <button
+                onClick={shareToTwitter}
+                className="flex items-center space-x-2 w-full px-4 py-2 hover:bg-gray-50 text-left"
+              >
+                <Twitter className="h-4 w-4" />
+                <span>Share to Twitter</span>
+              </button>
+              <button
+                onClick={shareToFacebook}
+                className="flex items-center space-x-2 w-full px-4 py-2 hover:bg-gray-50 text-left"
+              >
+                <Facebook className="h-4 w-4" />
+                <span>Share to Facebook</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Success message */}
+        <AnimatePresence>
+          {shareSuccess && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute left-0 bottom-full mb-2 bg-green-500 text-white px-3 py-1 rounded text-sm"
+            >
+              Link copied!
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       
       {/* Likes count */}
